@@ -19,7 +19,7 @@ canvas{display:block}
 @media (orientation:landscape) and (max-height:520px){#hud{font-size:12.5px;padding-top:4px}#bar{bottom:calc(8px + env(safe-area-inset-bottom,0px))}#bar button{font-size:13px;padding:8px 10px}#msg{top:30%}}
 </style></head><body>
 <div id="hud"><b>Urban Empire</b> · <span id="biome"></span><br><small>Ляво: движение · Дясно: камера</small><div id="stat"></div></div>
-<div id="bar"><button id="pro">🔍 Проучване −50</button><button id="bk1" style="display:none"></button><button id="bk2" style="display:none"></button><button id="trk" style="display:none"></button><button id="act" style="display:none"></button></div><button id="fs">⛶</button><div id="rot">📱↻ Завърти телефона хоризонтално</div><div id="msg"></div>
+<div id="bar"><button id="pro">🔍 Проучване −50</button><button id="bk1" style="display:none"></button><button id="bk2" style="display:none"></button><button id="trt" style="display:none"></button><button id="trk" style="display:none"></button><button id="act" style="display:none"></button></div><button id="fs">⛶</button><div id="rot">📱↻ Завърти телефона хоризонтално</div><div id="msg"></div>
 <div id="joy"><div id="knob"></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -109,10 +109,10 @@ const t=b==='mountain'?'gold':b==='desert'?'oil':b==='water'?(Math.random()<.5?'
 const m=new THREE.Mesh(t==='gold'?gm:om,new THREE.MeshLambertMaterial({color:t==='gold'?0xffc400:0x151515,emissive:t==='gold'?0x553b00:0x111111}));m.position.set(x,Math.max(h,0)+1.2,z);m.visible=false;scene.add(m);
 const sz=400+Math.random()*800;deps.push({t,x,z,m,left:sz,size:sz,stock:0,found:false,own:false})}
 const beacon=new THREE.Mesh(new THREE.CylinderGeometry(2,2,60,12,1,true),new THREE.MeshBasicMaterial({color:0x44ddff,transparent:true,opacity:.35,side:THREE.DoubleSide}));beacon.visible=false;scene.add(beacon);
-const bAct=document.getElementById('act'),bPro=document.getElementById('pro'),bTrk=document.getElementById('trk'),bB1=document.getElementById('bk1'),bB2=document.getElementById('bk2'),stat=document.getElementById('stat');
+const bAct=document.getElementById('act'),bPro=document.getElementById('pro'),bTrk=document.getElementById('trk'),bTrt=document.getElementById('trt'),bB1=document.getElementById('bk1'),bB2=document.getElementById('bk2'),stat=document.getElementById('stat');
 const near=(o,r)=>Math.hypot(o.x-P.position.x,o.z-P.position.z)<r,price=k=>PR[k]*(1+.25*Math.sin(performance.now()/50000+(k==='oil'?2:0)));
 function toast(s){const e=document.getElementById('msg');e.textContent=s;e.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.opacity=0,2200)}
-[bAct,bPro,bTrk,bB1,bB2].forEach(b=>b.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true}));
+[bAct,bPro,bTrk,bTrt,bB1,bB2].forEach(b=>b.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true}));
 bPro.onclick=()=>{if(money<50)return toast('Недостатъчно монети');money-=50;treasury+=50;let n=0;deps.forEach(d=>{if(!d.found&&near(d,30)){d.found=true;d.m.visible=true;d.m.scale.setScalar(.7+d.size/1200*.8);n++}});toast(n?'Намерени залежи: '+n:'Нищо наблизо')};
 bAct.onclick=()=>act&&act();
 const OC=0xe8702a,mat=c=>new THREE.MeshLambertMaterial({color:c});
@@ -130,29 +130,33 @@ bB2.onclick=()=>{const p=Math.min(money,debt);if(p<1)return;money-=p;treasury+=p
 const bFs=document.getElementById('fs');bFs.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});bFs.onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();await screen.orientation.lock('landscape')}catch(err){toast('Завърти телефона хоризонтално (изключи заключването на въртенето)')}};
 addEventListener('orientationchange',()=>setTimeout(()=>dispatchEvent(new Event('resize')),300));
 let lockT=0;document.getElementById('bar').addEventListener('click',e=>{if(performance.now()<lockT){e.stopPropagation();e.preventDefault();return}lockT=performance.now()+700},true);
-const trucks=[],TCAP=80,TSP=12,truckCost=()=>600+300*trucks.length;
-function mkTruck(){const g=new THREE.Group(),b=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.3,3.2),mat(0xdddddd)),c=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.1,1.2),mat(OC));b.position.set(0,1.1,-.6);c.position.set(0,.95,1.6);g.add(b,c);return g}
+const trucks=[],TT=[{n:'Пикап',p:600,cap:40,sp:10,sc:.8,c:0xe8702a},{n:'Камион',p:1800,cap:80,sp:12,sc:1,c:0x2e86c1},{n:'Тежкотоварен',p:5400,cap:160,sp:13,sc:1.2,c:0x27ae60},{n:'Влекач',p:16000,cap:320,sp:14,sc:1.45,c:0x8e44ad},{n:'Конвой',p:48000,cap:640,sp:16,sc:1.7,c:0xc0392b}];let tsel=0;const truckCost=()=>TT[tsel].p;
+function mkTruck(t,i){const g=new THREE.Group(),b=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.3,3.2),mat(0xdddddd)),c=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.1,1.2),mat(t.c));b.position.set(0,1.1,-.6);c.position.set(0,.95,1.6);g.add(b,c);if(i>=3){const r=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.3,2.4),mat(0xbbbbbb));r.position.set(0,1.1,-3.2);g.add(r)}g.scale.setScalar(t.sc);return g}
 function homeCity(){let b=CITIES[0],bd=1e9;for(const c of CITIES){const k=Math.hypot(c[0]-P.position.x,c[1]-P.position.z);if(k<bd){bd=k;b=c}}return b}
-bTrk.onclick=()=>{const c=truckCost();if(money<c)return toast('Недостатъчно монети');money-=c;treasury+=c;const h=homeCity(),m=mkTruck();m.position.set(h[0],0,h[1]);scene.add(m);trucks.push({m,home:h,st:'idle',tg:null,load:0,type:'gold'});toast('Купен камион! Събира автоматично')};
+bTrk.onclick=()=>{const c=truckCost();if(money<c)return toast('Недостатъчно монети');money-=c;treasury+=c;const T=TT[tsel],h=homeCity(),m=mkTruck(T,tsel);m.position.set(h[0],0,h[1]);scene.add(m);trucks.push({m,home:h,st:'idle',tg:null,load:0,type:'gold',cap:T.cap,sp:T.sp});toast('Купен: '+T.n+' (товар '+T.cap+')')};
+bTrt.onclick=()=>{tsel=(tsel+1)%TT.length;toast(TT[tsel].n+': товар '+TT[tsel].cap+', скорост '+TT[tsel].sp+', цена '+TT[tsel].p)};
 function truckPath(k,q){const h=k.home,dx=q.x-h[0],dz=q.z-h[1],ex=Math.abs(dx)>Math.abs(dz)?[h[0]+Math.sign(dx)*22,h[1]]:[h[0],h[1]+Math.sign(dz)*22];return[[h[0],h[1]],ex,[q.x,q.z]]}
 function trucksStep(dt){trucks.forEach(k=>{
 if(k.st==='idle'){const q=deps.filter(d=>d.own&&d.stock>=10&&!trucks.some(o=>o!==k&&o.tg===d)).sort((a,b)=>b.stock-a.stock)[0];if(q){k.tg=q;k.st='to';k.pt=truckPath(k,q);k.pi=1}}
 else{const toD=k.st==='to',w=k.pt[k.pi],last=k.pi>=k.pt.length-1,dx=w[0]-k.m.position.x,dz=w[1]-k.m.position.z,dd=Math.hypot(dx,dz);
-if(dd<1.5){if(!last)k.pi++;else if(toD){k.load=Math.min(TCAP,k.tg.stock);k.tg.stock-=k.load;k.type=k.tg.t;k.st='back';k.pt=k.pt.slice().reverse();k.pi=1}else{inv[k.type]+=k.load;const f=Math.min(money,8);money-=f;treasury+=f;k.load=0;k.st='idle';k.tg=null}}
-else{const s=Math.min(dd,TSP*dt);k.m.position.x+=dx/dd*s;k.m.position.z+=dz/dd*s;k.m.rotation.y=Math.atan2(dx,dz)}}
+if(dd<1.5){if(!last)k.pi++;else if(toD){k.load=Math.min(k.cap,k.tg.stock);k.tg.stock-=k.load;k.type=k.tg.t;k.st='back';k.pt=k.pt.slice().reverse();k.pi=1}else{addInv(k.type,k.load);const f=Math.min(money,k.load*price(k.type)*.09);money-=f;treasury+=f;k.load=0;k.st='idle';k.tg=null}}
+else{const s=Math.min(dd,k.sp*dt);k.m.position.x+=dx/dd*s;k.m.position.z+=dz/dd*s;k.m.rotation.y=Math.atan2(dx,dz)}}
 k.m.position.y=Math.max(height(k.m.position.x,k.m.position.z),0)+.1})}
 const rateNow=()=>deps.reduce((s,d)=>s+(d.own&&d.left>0?d.size/500:0),0);
-function econ(dt){
+const TAX_BR=[[100,.05],[300,.10],[800,.18],[1e9,.28]],TAX_FREE=0,PLOT_FEE=50;let playT=0;
+function taxRate(){if(playT<TAX_FREE)return 0;const p=rateNow()*60;if(p<=0)return 0;let t=0,lo=0;for(const[hi,r]of TAX_BR){if(p>lo)t+=(Math.min(p,hi)-lo)*r;lo=hi}return t/p}
+function addInv(ty,q){const tx=q*taxRate();inv[ty]+=q-tx;treasury+=tx*price(ty);return tx}
+function econ(dt){playT+=dt;{const n=playT<TAX_FREE?0:deps.filter(d=>d.own&&d.left>0).length,f=Math.min(money,n*PLOT_FEE/3600*dt);money-=f;treasury+=f}
 deps.forEach(d=>{if(d.own&&d.left>0){const r=Math.min(d.left,dt*d.size/500);d.left-=r;d.stock+=r;if(d.beam)d.beam.rotation.z=Math.sin(performance.now()/300)*.3}});
-const px=P.position.x,pz=P.position.z,inCity=cityD(px,pz)<24;trucksStep(dt);debt+=debt*.0005*dt;if(debt<1)debt=0;bB1.style.display=inCity?'block':'none';bB1.textContent='🏦 Кредит +'+loanAmt();bB2.style.display=inCity&&debt>=1?'block':'none';bB2.textContent='Върни дълг −'+Math.floor(Math.min(money,debt));bTrk.style.display=inCity?'block':'none';bTrk.textContent='🚚 Камион −'+truckCost();
+const px=P.position.x,pz=P.position.z,inCity=cityD(px,pz)<24;trucksStep(dt);debt+=debt*.0005*dt;if(debt<1)debt=0;bB1.style.display=inCity?'block':'none';bB1.textContent='🏦 Кредит +'+loanAmt();bB2.style.display=inCity&&debt>=1?'block':'none';bB2.textContent='Върни дълг −'+Math.floor(Math.min(money,debt));bTrk.style.display=inCity?'block':'none';bTrt.style.display=inCity?'block':'none';bTrt.textContent='Тип: '+TT[tsel].n+' ▸';bTrk.textContent='🚚 '+TT[tsel].n+' −'+truckCost();
 if(job&&Math.hypot(job.x-px,job.z-pz)<6){money+=job.pay;toast('Доставка приключена: +'+job.pay);job=null;beacon.visible=false}
 act=null;let label='';const nd=deps.find(d=>d.found&&near(d,6));
 if(nd&&!nd.own){const cost=Math.round(nd.size*.5);label='Купи права −'+cost;act=()=>{if(money<cost)return toast('Недостатъчно монети');money-=cost;treasury+=cost;claim(nd);toast('Залежът е твой!')}}
-else if(nd&&nd.stock>=1){const q=Math.floor(nd.stock);label='Събери '+q;act=()=>{inv[nd.t]+=q;nd.stock-=q}}
+else if(nd&&nd.stock>=1){const q=Math.floor(nd.stock);label='Събери '+q;act=()=>{addInv(nd.t,q);nd.stock-=q}}
 else if(inCity&&inv.gold+inv.oil>=1){const gr=inv.gold*price('gold')+inv.oil*price('oil'),v=Math.floor(gr*(1-FEE));label='Продай +'+v;act=()=>{money+=v;treasury+=gr-v;inv.gold=inv.oil=0}}
 else if(inCity&&!job){label='Вземи доставка';act=()=>{const cs=CITIES.filter(c=>Math.hypot(c[0]-px,c[1]-pz)>30),c0=cs[Math.floor(Math.random()*cs.length)];if(!c0)return;job={x:c0[0],z:c0[1],pay:Math.round(Math.hypot(c0[0]-px,c0[1]-pz)*1.6)};beacon.position.set(c0[0],height(c0[0],c0[1])+30,c0[1]);beacon.visible=true}}
 bAct.style.display=act?'block':'none';bAct.textContent=label;
-stat.innerHTML='💰 '+Math.floor(money)+' · 🥇 '+Math.floor(inv.gold)+' · 🛢 '+Math.floor(inv.oil)+(rateNow()>0?'<br>⛏ Добив: '+rateNow().toFixed(1)+'/сек · обекти: '+deps.filter(d=>d.own).length:'')+(trucks.length?'<br>🚚 Камиони: '+trucks.length+' (товар до '+TCAP+')':'')+(debt>=1?'<br>🏦 Дълг: '+Math.floor(debt):'')+(job?'<br>📦 Доставка: '+Math.round(Math.hypot(job.x-px,job.z-pz))+' м (+'+job.pay+')':'')+'<br><small>Пазар: 🥇'+price('gold').toFixed(1)+' 🛢'+price('oil').toFixed(1)+' · хазна '+Math.floor(treasury)+' · такса 5%</small>'}
+stat.innerHTML='💰 '+Math.floor(money)+' · 🥇 '+Math.floor(inv.gold)+' · 🛢 '+Math.floor(inv.oil)+(rateNow()>0?'<br>⛏ Добив: '+rateNow().toFixed(1)+'/сек · обекти: '+deps.filter(d=>d.own).length:'')+(rateNow()>0?'<br>🏛 Данък: '+(playT<TAX_FREE?'освободен още '+Math.ceil((TAX_FREE-playT)/60)+' мин':Math.round(taxRate()*100)+'% · участък '+PLOT_FEE+'/ч'):'')+(trucks.length?'<br>🚚 Камиони: '+trucks.length+' (общ товар '+trucks.reduce((s,k)=>s+k.cap,0)+')':'')+(debt>=1?'<br>🏦 Дълг: '+Math.floor(debt):'')+(job?'<br>📦 Доставка: '+Math.round(Math.hypot(job.x-px,job.z-pz))+' м (+'+job.pay+')':'')+'<br><small>Пазар: 🥇'+price('gold').toFixed(1)+' 🛢'+price('oil').toFixed(1)+' · хазна '+Math.floor(treasury)+' · такса 5%</small>'}
 const clock=new THREE.Clock(),hud=document.getElementById('biome');
 (function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.05);water.position.y=Math.sin(clock.elapsedTime*1.2)*.06;clouds.forEach(c=>{c.position.x+=dt*2;if(c.position.x>170)c.position.x=-170});
 let ix=jx+(keys.d?1:0)-(keys.a?1:0),iy=jy+(keys.s?1:0)-(keys.w?1:0);const m=Math.hypot(ix,iy);
