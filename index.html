@@ -57,14 +57,19 @@ scene.add(new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,fl
 // Дървета и кактуси
 const d=new THREE.Object3D(),COL=[];
 function scatter(type,max,parts,sc,rad){const pts=[];for(let n=0;n<6000&&pts.length<max;n++){const x=(Math.random()-.5)*(S-6),z=(Math.random()-.5)*(S-6),h=height(x,z);if(biome(x,z,h)===type&&cityD(x,z)>28)pts.push([x,h,z,sc*(.7+Math.random()*.6),Math.random()*6,.8+Math.random()*.4])}
-pts.forEach(p=>COL.push({x:p[0],z:p[2],r:rad*p[3]}));for(const [geom,hex,yOff,vary] of parts){const m=new THREE.InstancedMesh(geom,new THREE.MeshLambertMaterial({color:0xffffff,flatShading:true}),pts.length);pts.forEach((p,i)=>{d.position.set(p[0],p[1]+yOff*p[3],p[2]);d.scale.set(p[3],p[3],p[3]);d.rotation.y=p[4];d.updateMatrix();m.setMatrixAt(i,d.matrix);m.setColorAt(i,new THREE.Color(hex).multiplyScalar(vary?p[5]:1))});scene.add(m)}}
+pts.forEach(p=>COL.push({x:p[0],z:p[2],r:rad*p[3]}));for(const [geom,hex,yOff,vary] of parts){const m=new THREE.InstancedMesh(geom,new THREE.MeshLambertMaterial({color:0xffffff,flatShading:true}),pts.length);pts.forEach((p,i)=>{d.position.set(p[0],p[1]+yOff*p[3],p[2]);d.scale.set(p[3],p[3],p[3]);d.rotation.y=p[4];d.updateMatrix();m.setMatrixAt(i,d.matrix);m.setColorAt(i,new THREE.Color(hex).multiplyScalar(vary?p[5]:1))});m.frustumCulled=false;scene.add(m)}}
 scatter('forest',320,[[new THREE.CylinderGeometry(.25,.35,2,6),0x5a3a1e,1,0],[new THREE.ConeGeometry(1.9,3.6,7),0x1d5a28,3.4,1],[new THREE.ConeGeometry(1.4,3,7),0x24672f,5.2,1]],.7,.5);
 scatter('forest',160,[[new THREE.CylinderGeometry(.3,.4,3,6),0x5a3a1e,1.5,0],[new THREE.IcosahedronGeometry(2.2,0),0x3f8f2e,4.2,1]],.7,.5);
 scatter('desert',90,[[new THREE.CylinderGeometry(.4,.45,3.5,7),0x3f8f3a,1.75,1]],.8,.6);
 
 // Градове
-CITIES.forEach(c=>{for(let i=0;i<24;i++){const a=Math.random()*6.28,r=7+Math.random()*14,w=2.5+Math.random()*2,h=4+Math.random()*13,g=.45+Math.random()*.3;
-const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),new THREE.MeshLambertMaterial({color:new THREE.Color(g,g+.03,g+.1)}));b.position.set(c[0]+Math.cos(a)*r,1.5+h/2,c[1]+Math.sin(a)*r);scene.add(b);COL.push({x:b.position.x,z:b.position.z,hw:w/2})}});
+const BLK=[],STR=new THREE.MeshLambertMaterial({color:0x3a3d42,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+CITIES.forEach(c=>{for(const o of[-12,0,12]){const sa=new THREE.Mesh(new THREE.PlaneGeometry(4,44).rotateX(-Math.PI/2),STR);sa.position.set(c[0]+o,1.52,c[1]);const sb=new THREE.Mesh(new THREE.PlaneGeometry(44,4).rotateX(-Math.PI/2),STR);sb.position.set(c[0],1.52,c[1]+o);scene.add(sa,sb)}
+for(const q of[[-6,-6],[6,-6],[-6,6],[6,6],[-18,-6],[-18,6],[18,-6],[18,6],[-6,-18],[6,-18],[-6,18],[6,18]])BLK.push([c[0]+q[0],c[1]+q[1]])});
+const pad=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0x8a8d92}),BLK.length),bld=new THREE.InstancedMesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color:0xffffff}),BLK.length*4),dm=new THREE.Object3D();let bi=0;
+BLK.forEach((p,i)=>{COL.push({x:p[0],z:p[1],hw:4});dm.position.set(p[0],1.55,p[1]);dm.scale.set(8,.1,8);dm.updateMatrix();pad.setMatrixAt(i,dm.matrix);
+for(const sx of[-2,2])for(const sz of[-2,2]){const bh=3+Math.random()*14,g=.45+Math.random()*.3;dm.position.set(p[0]+sx,1.5+bh/2,p[1]+sz);dm.scale.set(3.5,bh,3.5);dm.updateMatrix();bld.setMatrixAt(bi,dm.matrix);bld.setColorAt(bi++,new THREE.Color(g,g+.03,g+.1))}});
+pad.frustumCulled=false;bld.frustumCulled=false;scene.add(pad,bld);
 
 // Играч
 const P=new THREE.Group();
@@ -129,10 +134,11 @@ const trucks=[],TCAP=80,TSP=12,truckCost=()=>600+300*trucks.length;
 function mkTruck(){const g=new THREE.Group(),b=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.3,3.2),mat(0xdddddd)),c=new THREE.Mesh(new THREE.BoxGeometry(1.8,1.1,1.2),mat(OC));b.position.set(0,1.1,-.6);c.position.set(0,.95,1.6);g.add(b,c);return g}
 function homeCity(){let b=CITIES[0],bd=1e9;for(const c of CITIES){const k=Math.hypot(c[0]-P.position.x,c[1]-P.position.z);if(k<bd){bd=k;b=c}}return b}
 bTrk.onclick=()=>{const c=truckCost();if(money<c)return toast('Недостатъчно монети');money-=c;treasury+=c;const h=homeCity(),m=mkTruck();m.position.set(h[0],0,h[1]);scene.add(m);trucks.push({m,home:h,st:'idle',tg:null,load:0,type:'gold'});toast('Купен камион! Събира автоматично')};
+function truckPath(k,q){const h=k.home,dx=q.x-h[0],dz=q.z-h[1],ex=Math.abs(dx)>Math.abs(dz)?[h[0]+Math.sign(dx)*22,h[1]]:[h[0],h[1]+Math.sign(dz)*22];return[[h[0],h[1]],ex,[q.x,q.z]]}
 function trucksStep(dt){trucks.forEach(k=>{
-if(k.st==='idle'){const q=deps.filter(d=>d.own&&d.stock>=10&&!trucks.some(o=>o!==k&&o.tg===d)).sort((a,b)=>b.stock-a.stock)[0];if(q){k.tg=q;k.st='to'}}
-else{const toD=k.st==='to',tx=toD?k.tg.x:k.home[0],tz=toD?k.tg.z:k.home[1],dx=tx-k.m.position.x,dz=tz-k.m.position.z,dd=Math.hypot(dx,dz);
-if(dd<2){if(toD){k.load=Math.min(TCAP,k.tg.stock);k.tg.stock-=k.load;k.type=k.tg.t;k.st='back'}else{inv[k.type]+=k.load;const f=Math.min(money,8);money-=f;treasury+=f;k.load=0;k.st='idle';k.tg=null}}
+if(k.st==='idle'){const q=deps.filter(d=>d.own&&d.stock>=10&&!trucks.some(o=>o!==k&&o.tg===d)).sort((a,b)=>b.stock-a.stock)[0];if(q){k.tg=q;k.st='to';k.pt=truckPath(k,q);k.pi=1}}
+else{const toD=k.st==='to',w=k.pt[k.pi],last=k.pi>=k.pt.length-1,dx=w[0]-k.m.position.x,dz=w[1]-k.m.position.z,dd=Math.hypot(dx,dz);
+if(dd<1.5){if(!last)k.pi++;else if(toD){k.load=Math.min(TCAP,k.tg.stock);k.tg.stock-=k.load;k.type=k.tg.t;k.st='back';k.pt=k.pt.slice().reverse();k.pi=1}else{inv[k.type]+=k.load;const f=Math.min(money,8);money-=f;treasury+=f;k.load=0;k.st='idle';k.tg=null}}
 else{const s=Math.min(dd,TSP*dt);k.m.position.x+=dx/dd*s;k.m.position.z+=dz/dd*s;k.m.rotation.y=Math.atan2(dx,dz)}}
 k.m.position.y=Math.max(height(k.m.position.x,k.m.position.z),0)+.1})}
 const rateNow=()=>deps.reduce((s,d)=>s+(d.own&&d.left>0?d.size/500:0),0);
