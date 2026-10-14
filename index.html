@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="bg"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Urban Empire">
-<meta name="theme-color" content="#9ecbe8">
 <title>Urban Empire – 3D свят</title>
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#9ecbe8;touch-action:none;font-family:system-ui,sans-serif}
@@ -60,16 +55,16 @@ geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.computeVertexNorm
 scene.add(new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,flatShading:false})));
 
 // Дървета и кактуси
-const d=new THREE.Object3D();
-function scatter(type,max,parts,sc){const pts=[];for(let n=0;n<6000&&pts.length<max;n++){const x=(Math.random()-.5)*(S-6),z=(Math.random()-.5)*(S-6),h=height(x,z);if(biome(x,z,h)===type&&cityD(x,z)>28)pts.push([x,h,z,sc*(.7+Math.random()*.6),Math.random()*6,.8+Math.random()*.4])}
-for(const [geom,hex,yOff,vary] of parts){const m=new THREE.InstancedMesh(geom,new THREE.MeshLambertMaterial({color:0xffffff,flatShading:true}),pts.length);pts.forEach((p,i)=>{d.position.set(p[0],p[1]+yOff*p[3],p[2]);d.scale.set(p[3],p[3],p[3]);d.rotation.y=p[4];d.updateMatrix();m.setMatrixAt(i,d.matrix);m.setColorAt(i,new THREE.Color(hex).multiplyScalar(vary?p[5]:1))});scene.add(m)}}
-scatter('forest',320,[[new THREE.CylinderGeometry(.25,.35,2,6),0x5a3a1e,1,0],[new THREE.ConeGeometry(1.9,3.6,7),0x1d5a28,3.4,1],[new THREE.ConeGeometry(1.4,3,7),0x24672f,5.2,1]],.7);
-scatter('forest',160,[[new THREE.CylinderGeometry(.3,.4,3,6),0x5a3a1e,1.5,0],[new THREE.IcosahedronGeometry(2.2,0),0x3f8f2e,4.2,1]],.7);
-scatter('desert',90,[[new THREE.CylinderGeometry(.4,.45,3.5,7),0x3f8f3a,1.75,1]],.8);
+const d=new THREE.Object3D(),COL=[];
+function scatter(type,max,parts,sc,rad){const pts=[];for(let n=0;n<6000&&pts.length<max;n++){const x=(Math.random()-.5)*(S-6),z=(Math.random()-.5)*(S-6),h=height(x,z);if(biome(x,z,h)===type&&cityD(x,z)>28)pts.push([x,h,z,sc*(.7+Math.random()*.6),Math.random()*6,.8+Math.random()*.4])}
+pts.forEach(p=>COL.push({x:p[0],z:p[2],r:rad*p[3]}));for(const [geom,hex,yOff,vary] of parts){const m=new THREE.InstancedMesh(geom,new THREE.MeshLambertMaterial({color:0xffffff,flatShading:true}),pts.length);pts.forEach((p,i)=>{d.position.set(p[0],p[1]+yOff*p[3],p[2]);d.scale.set(p[3],p[3],p[3]);d.rotation.y=p[4];d.updateMatrix();m.setMatrixAt(i,d.matrix);m.setColorAt(i,new THREE.Color(hex).multiplyScalar(vary?p[5]:1))});scene.add(m)}}
+scatter('forest',320,[[new THREE.CylinderGeometry(.25,.35,2,6),0x5a3a1e,1,0],[new THREE.ConeGeometry(1.9,3.6,7),0x1d5a28,3.4,1],[new THREE.ConeGeometry(1.4,3,7),0x24672f,5.2,1]],.7,.5);
+scatter('forest',160,[[new THREE.CylinderGeometry(.3,.4,3,6),0x5a3a1e,1.5,0],[new THREE.IcosahedronGeometry(2.2,0),0x3f8f2e,4.2,1]],.7,.5);
+scatter('desert',90,[[new THREE.CylinderGeometry(.4,.45,3.5,7),0x3f8f3a,1.75,1]],.8,.6);
 
 // Градове
 CITIES.forEach(c=>{for(let i=0;i<24;i++){const a=Math.random()*6.28,r=7+Math.random()*14,w=2.5+Math.random()*2,h=4+Math.random()*13,g=.45+Math.random()*.3;
-const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),new THREE.MeshLambertMaterial({color:new THREE.Color(g,g+.03,g+.1)}));b.position.set(c[0]+Math.cos(a)*r,1.5+h/2,c[1]+Math.sin(a)*r);scene.add(b)}});
+const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),new THREE.MeshLambertMaterial({color:new THREE.Color(g,g+.03,g+.1)}));b.position.set(c[0]+Math.cos(a)*r,1.5+h/2,c[1]+Math.sin(a)*r);scene.add(b);COL.push({x:b.position.x,z:b.position.z,hw:w/2})}});
 
 // Играч
 const P=new THREE.Group();
@@ -89,6 +84,7 @@ R.add(torso,neck,hips,head,hair);P.add(R);let ph=0;
 
 P.position.set(CITIES[0][0],height(CITIES[0][0],CITIES[0][1]),CITIES[0][1]);scene.add(P);
 
+const PRAD=.4;function collide(){const p=P.position;for(const o of COL){if(o.hw){const cx=Math.max(o.x-o.hw,Math.min(o.x+o.hw,p.x)),cz=Math.max(o.z-o.hw,Math.min(o.z+o.hw,p.z)),dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);if(d>1e-4){if(d<PRAD){p.x+=dx/d*(PRAD-d);p.z+=dz/d*(PRAD-d)}}else{const ex=o.hw-Math.abs(p.x-o.x),ez=o.hw-Math.abs(p.z-o.z);if(ex<ez)p.x+=(p.x<o.x?-1:1)*(ex+PRAD);else p.z+=(p.z<o.z?-1:1)*(ez+PRAD)}}else{const dx=p.x-o.x,dz=p.z-o.z,m=o.r+PRAD,d2=dx*dx+dz*dz;if(d2<m*m){const d=Math.sqrt(d2)||1e-4;p.x+=dx/d*(m-d);p.z+=dz/d*(m-d)}}}}
 // Управление
 let yaw=0,pitch=.6,jx=0,jy=0,jid=null,jo=null,lid=null,lp=null;const keys={};
 const joy=document.getElementById('joy'),knob=document.getElementById('knob');
@@ -157,7 +153,7 @@ let ix=jx+(keys.d?1:0)-(keys.a?1:0),iy=jy+(keys.s?1:0)-(keys.w?1:0);const m=Math
 if(m>.08){const n=Math.min(1,m);ix/=m;iy/=m;
 const mx=Math.cos(yaw)*ix+(-Math.sin(yaw))*(-iy),mz=(-Math.sin(yaw))*ix+(-Math.cos(yaw))*(-iy),sp=(P.position.y<.15?7:14)*n*dt,lim=S/2-3;
 P.position.x=Math.max(-lim,Math.min(lim,P.position.x+mx*sp));P.position.z=Math.max(-lim,Math.min(lim,P.position.z+mz*sp));P.rotation.y=Math.atan2(mx,mz);ph+=sp*(P.position.y<.15?1.6:.9)}
-const h=height(P.position.x,P.position.z);P.position.y=lerp(P.position.y,Math.max(h,0),.35);
+collide();const h=height(P.position.x,P.position.z);P.position.y=lerp(P.position.y,Math.max(h,0),.35);
 const sw=h<.25,mv=m>.08?1:0,A=sw?0:mv;if(sw&&!mv)ph+=dt*2;const s=Math.sin(ph),k=sw?.5+.5*mv:1;
 legL.rotation.x=lerp(legL.rotation.x,sw?Math.sin(ph*2)*.35*(.4+mv):s*.8*A,.4);
 legR.rotation.x=lerp(legR.rotation.x,sw?-Math.sin(ph*2)*.35*(.4+mv):-s*.8*A,.4);
