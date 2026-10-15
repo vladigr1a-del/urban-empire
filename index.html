@@ -15,11 +15,12 @@ canvas{display:block}
 #stat{margin-top:4px}
 #fs{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));width:40px;height:40px;border:0;border-radius:12px;background:rgba(20,30,50,.6);color:#fff;font-size:20px}
 #rot{display:none;position:fixed;left:0;right:0;top:34%;text-align:center;color:#fff;text-shadow:0 1px 4px #000;font-size:16px;pointer-events:none}
+#zo,#zi{position:fixed;right:max(10px,env(safe-area-inset-right,0px));width:40px;height:40px;border:0;border-radius:12px;background:rgba(20,30,50,.6);color:#fff;font-size:22px}#zo{top:calc(56px + env(safe-area-inset-top,0px))}#zi{top:calc(104px + env(safe-area-inset-top,0px))}
 @media (orientation:portrait){#rot{display:block}}
 @media (orientation:landscape) and (max-height:520px){#hud{font-size:12.5px;padding-top:4px}#bar{bottom:calc(8px + env(safe-area-inset-bottom,0px))}#bar button{font-size:13px;padding:8px 10px}#msg{top:30%}}
 </style></head><body>
 <div id="hud"><b>Urban Empire</b> · <span id="biome"></span><br><small>Ляво: движение · Дясно: камера</small><div id="stat"></div></div>
-<div id="bar"><button id="pro">🔍 Проучване −50</button><button id="bk1" style="display:none"></button><button id="bk2" style="display:none"></button><button id="trt" style="display:none"></button><button id="trk" style="display:none"></button><button id="act" style="display:none"></button></div><button id="fs">⛶</button><div id="rot">📱↻ Завърти телефона хоризонтално</div><div id="msg"></div>
+<div id="bar"><button id="pro">🔍 Проучване −50</button><button id="bk1" style="display:none"></button><button id="bk2" style="display:none"></button><button id="trt" style="display:none"></button><button id="trk" style="display:none"></button><button id="act" style="display:none"></button></div><button id="fs">⛶</button><button id="zo">−</button><button id="zi">+</button><div id="rot">📱↻ Завърти телефона хоризонтално</div><div id="msg"></div>
 <div id="joy"><div id="knob"></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -91,23 +92,25 @@ P.position.set(CITIES[0][0],height(CITIES[0][0],CITIES[0][1]),CITIES[0][1]);scen
 
 const PRAD=.4;function collide(){const p=P.position;for(const o of COL){if(o.hw){const cx=Math.max(o.x-o.hw,Math.min(o.x+o.hw,p.x)),cz=Math.max(o.z-o.hw,Math.min(o.z+o.hw,p.z)),dx=p.x-cx,dz=p.z-cz,d=Math.hypot(dx,dz);if(d>1e-4){if(d<PRAD){p.x+=dx/d*(PRAD-d);p.z+=dz/d*(PRAD-d)}}else{const ex=o.hw-Math.abs(p.x-o.x),ez=o.hw-Math.abs(p.z-o.z);if(ex<ez)p.x+=(p.x<o.x?-1:1)*(ex+PRAD);else p.z+=(p.z<o.z?-1:1)*(ez+PRAD)}}else{const dx=p.x-o.x,dz=p.z-o.z,m=o.r+PRAD,d2=dx*dx+dz*dz;if(d2<m*m){const d=Math.sqrt(d2)||1e-4;p.x+=dx/d*(m-d);p.z+=dz/d*(m-d)}}}}
 // Управление
-let yaw=0,pitch=.6,jx=0,jy=0,jid=null,jo=null,lid=null,lp=null;const keys={};
+let yaw=0,pitch=.6,jx=0,jy=0,jid=null,jo=null,lid=null,lp=null,zoom=1,zid=null,zd=0;const setZoom=z=>{zoom=Math.min(10,Math.max(1,z))};const keys={};
 const joy=document.getElementById('joy'),knob=document.getElementById('knob');
-addEventListener('touchstart',e=>{for(const t of e.changedTouches){if(t.clientX<innerWidth/2&&jid===null){jid=t.identifier;jo=[t.clientX,t.clientY];joy.style.display='block';joy.style.left=jo[0]+'px';joy.style.top=jo[1]+'px'}else if(lid===null){lid=t.identifier;lp=[t.clientX,t.clientY]}}},{passive:false});
-addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier===jid){let dx=t.clientX-jo[0],dy=t.clientY-jo[1];const l=Math.hypot(dx,dy),m=45;if(l>m){dx*=m/l;dy*=m/l}jx=dx/m;jy=dy/m;knob.style.transform=`translate(${dx}px,${dy}px)`}else if(t.identifier===lid){yaw-=(t.clientX-lp[0])*.006;pitch=Math.min(1.1,Math.max(.3,pitch+(t.clientY-lp[1])*.004));lp=[t.clientX,t.clientY]}}},{passive:false});
-const end=e=>{for(const t of e.changedTouches){if(t.identifier===jid){jid=null;jx=jy=0;joy.style.display='none';knob.style.transform=''}if(t.identifier===lid)lid=null}};
+addEventListener('touchstart',e=>{for(const t of e.changedTouches){if(t.clientX<innerWidth/2&&jid===null){jid=t.identifier;jo=[t.clientX,t.clientY];joy.style.display='block';joy.style.left=jo[0]+'px';joy.style.top=jo[1]+'px'}else if(lid===null){lid=t.identifier;lp=[t.clientX,t.clientY]}else if(zid===null){zid=t.identifier;zd=0}}},{passive:false});
+addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches){if(t.identifier===jid){let dx=t.clientX-jo[0],dy=t.clientY-jo[1];const l=Math.hypot(dx,dy),m=45;if(l>m){dx*=m/l;dy*=m/l}jx=dx/m;jy=dy/m;knob.style.transform=`translate(${dx}px,${dy}px)`}else if(t.identifier===lid&&zid===null){yaw-=(t.clientX-lp[0])*.006;pitch=Math.min(1.1,Math.max(.3,pitch+(t.clientY-lp[1])*.004));lp=[t.clientX,t.clientY]}}if(zid!==null&&lid!==null){const T=[...e.touches],a=T.find(q=>q.identifier===lid),b=T.find(q=>q.identifier===zid);if(a&&b){const nd=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);if(zd>0)setZoom(zoom*zd/nd);zd=nd}}},{passive:false});
+const end=e=>{for(const t of e.changedTouches){if(t.identifier===jid){jid=null;jx=jy=0;joy.style.display='none';knob.style.transform=''}if(t.identifier===lid){lid=null;zid=null}else if(t.identifier===zid){zid=null;const a=[...e.touches].find(q=>q.identifier===lid);if(a)lp=[a.clientX,a.clientY]}}};
 addEventListener('touchend',end);addEventListener('touchcancel',end);
 addEventListener('keydown',e=>keys[e.key.toLowerCase()]=1);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
 addEventListener('mousemove',e=>{if(e.buttons){yaw-=e.movementX*.005;pitch=Math.min(1.1,Math.max(.3,pitch+e.movementY*.004))}});
+addEventListener('wheel',e=>{e.preventDefault();setZoom(zoom*(e.deltaY>0?1.12:1/1.12))},{passive:false});
+const bZo=document.getElementById('zo'),bZi=document.getElementById('zi');[bZo,bZi].forEach(b=>b.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true}));bZo.onclick=()=>setZoom(zoom*1.4);bZi.onclick=()=>setZoom(zoom/1.4);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
 // === Икономика (локална версия) ===
-let money=1000,treasury=2000,job=null,act=null;const inv={gold:0,oil:0},PR={gold:9,oil:4},FEE=.05;
+let money=650,treasury=2000,job=null,act=null;const inv={gold:0,oil:0},PR={gold:9,oil:4},FEE=.05;
 const deps=[],gm=new THREE.OctahedronGeometry(1.1),om=new THREE.CylinderGeometry(.8,.8,1.6,10);
-for(let n=0;n<6000&&deps.length<36;n++){const x=(Math.random()-.5)*(S-10),z=(Math.random()-.5)*(S-10),h=height(x,z),b=biome(x,z,h);if(cityD(x,z)<30)continue;
+function spawnDep(){for(let n=0;n<600;n++){const x=(Math.random()-.5)*(S-10),z=(Math.random()-.5)*(S-10),h=height(x,z),b=biome(x,z,h);if(cityD(x,z)<30)continue;
 const t=b==='mountain'?'gold':b==='desert'?'oil':b==='water'?(Math.random()<.5?'gold':'oil'):(b==='forest'&&Math.random()<.15?'gold':null);if(!t)continue;
 const m=new THREE.Mesh(t==='gold'?gm:om,new THREE.MeshLambertMaterial({color:t==='gold'?0xffc400:0x151515,emissive:t==='gold'?0x553b00:0x111111}));m.position.set(x,Math.max(h,0)+1.2,z);m.visible=false;scene.add(m);
-const sz=400+Math.random()*800;deps.push({t,x,z,m,left:sz,size:sz,stock:0,found:false,own:false})}
+const sz=400+Math.random()*800;deps.push({t,x,z,m,left:sz,size:sz,stock:0,found:false,own:false});return true}return false}for(let i=0;i<36;i++)spawnDep();
 const beacon=new THREE.Mesh(new THREE.CylinderGeometry(2,2,60,12,1,true),new THREE.MeshBasicMaterial({color:0x44ddff,transparent:true,opacity:.35,side:THREE.DoubleSide}));beacon.visible=false;scene.add(beacon);
 const bAct=document.getElementById('act'),bPro=document.getElementById('pro'),bTrk=document.getElementById('trk'),bTrt=document.getElementById('trt'),bB1=document.getElementById('bk1'),bB2=document.getElementById('bk2'),stat=document.getElementById('stat');
 const near=(o,r)=>Math.hypot(o.x-P.position.x,o.z-P.position.z)<r,price=k=>PR[k]*(1+.25*Math.sin(performance.now()/50000+(k==='oil'?2:0)));
@@ -142,12 +145,14 @@ else{const toD=k.st==='to',w=k.pt[k.pi],last=k.pi>=k.pt.length-1,dx=w[0]-k.m.pos
 if(dd<1.5){if(!last)k.pi++;else if(toD){k.load=Math.min(k.cap,k.tg.stock);k.tg.stock-=k.load;k.type=k.tg.t;k.st='back';k.pt=k.pt.slice().reverse();k.pi=1}else{addInv(k.type,k.load);const f=Math.min(money,k.load*price(k.type)*.09);money-=f;treasury+=f;k.load=0;k.st='idle';k.tg=null}}
 else{const s=Math.min(dd,k.sp*dt);k.m.position.x+=dx/dd*s;k.m.position.z+=dz/dd*s;k.m.rotation.y=Math.atan2(dx,dz)}}
 k.m.position.y=Math.max(height(k.m.position.x,k.m.position.z),0)+.1})}
-const rateNow=()=>deps.reduce((s,d)=>s+(d.own&&d.left>0?d.size/500:0),0);
-const TAX_BR=[[100,.05],[300,.10],[800,.18],[1e9,.28]],TAX_FREE=0,PLOT_FEE=50;let playT=0;
+const DEP_T=1000,REGEN=300,SPAWN_EVERY=120;let spawnT=0;
+const rateNow=()=>deps.reduce((s,d)=>s+(d.own&&d.left>0?d.size/DEP_T:0),0);
+const TAX_BR=[[50,.05],[150,.10],[400,.18],[1e9,.28]],TAX_FREE=0,PLOT_FEE=50;let playT=0;
 function taxRate(){if(playT<TAX_FREE)return 0;const p=rateNow()*60;if(p<=0)return 0;let t=0,lo=0;for(const[hi,r]of TAX_BR){if(p>lo)t+=(Math.min(p,hi)-lo)*r;lo=hi}return t/p}
 function addInv(ty,q){const tx=q*taxRate();inv[ty]+=q-tx;treasury+=tx*price(ty);return tx}
 function econ(dt){playT+=dt;{const n=playT<TAX_FREE?0:deps.filter(d=>d.own&&d.left>0).length,f=Math.min(money,n*PLOT_FEE/3600*dt);money-=f;treasury+=f}
-deps.forEach(d=>{if(d.own&&d.left>0){const r=Math.min(d.left,dt*d.size/500);d.left-=r;d.stock+=r;if(d.beam)d.beam.rotation.z=Math.sin(performance.now()/300)*.3}});
+deps.forEach(d=>{if(d.own&&d.left>0){const r=Math.min(d.left,dt*d.size/DEP_T);d.left-=r;d.stock+=r;if(d.beam)d.beam.rotation.z=Math.sin(performance.now()/300)*.3}else if(d.own){d.rec=(d.rec||0)+dt;if(d.rec>=REGEN){d.left=d.size;d.rec=0;toast('Находище се възстанови')}}});
+spawnT+=dt;if(spawnT>=SPAWN_EVERY){spawnT=0;if(deps.filter(d=>!d.own).length<40)spawnDep()}
 const px=P.position.x,pz=P.position.z,inCity=cityD(px,pz)<24;trucksStep(dt);debt+=debt*.0005*dt;if(debt<1)debt=0;bB1.style.display=inCity?'block':'none';bB1.textContent='🏦 Кредит +'+loanAmt();bB2.style.display=inCity&&debt>=1?'block':'none';bB2.textContent='Върни дълг −'+Math.floor(Math.min(money,debt));bTrk.style.display=inCity?'block':'none';bTrt.style.display=inCity?'block':'none';bTrt.textContent='Тип: '+TT[tsel].n+' ▸';bTrk.textContent='🚚 '+TT[tsel].n+' −'+truckCost();
 if(job&&Math.hypot(job.x-px,job.z-pz)<6){money+=job.pay;toast('Доставка приключена: +'+job.pay);job=null;beacon.visible=false}
 act=null;let label='';const nd=deps.find(d=>d.found&&near(d,6));
@@ -172,9 +177,9 @@ armR.rotation.x=lerp(armR.rotation.x,sw?Math.PI*.85-s*1.1*k:s*.7*A,.4);
 R.rotation.x=lerp(R.rotation.x,sw?1.35:A*.1,.15);R.position.y=lerp(R.position.y,sw?-.35:Math.abs(s)*.06*A,.2);R.position.z=lerp(R.position.z,sw?-.9:0,.15);
 const c=Math.cos(ph),kL=sw?.3:(Math.max(0,-c)*.9+.12)*A,kR=sw?.3:(Math.max(0,c)*.9+.12)*A,eL=sw?-.4:-(.5+Math.max(0,s)*.5)*A,eR=sw?-.4:-(.5+Math.max(0,-s)*.5)*A;
 legL.l.rotation.x=lerp(legL.l.rotation.x,kL,.4);legR.l.rotation.x=lerp(legR.l.rotation.x,kR,.4);armL.l.rotation.x=lerp(armL.l.rotation.x,eL,.4);armR.l.rotation.x=lerp(armR.l.rotation.x,eR,.4);
-const dist=15,cx=P.position.x+Math.sin(yaw)*Math.cos(pitch)*dist,cz=P.position.z+Math.cos(yaw)*Math.cos(pitch)*dist;
+const dist=15*zoom;scene.fog.near=70*zoom;scene.fog.far=230*zoom;const cx=P.position.x+Math.sin(yaw)*Math.cos(pitch)*dist,cz=P.position.z+Math.cos(yaw)*Math.cos(pitch)*dist;
 camera.position.set(cx,Math.max(P.position.y+2+Math.sin(pitch)*dist,height(cx,cz)+2),cz);
 camera.lookAt(P.position.x,P.position.y+1.5,P.position.z);
-hud.textContent=NAMES[biome(P.position.x,P.position.z,h)];econ(dt);
+hud.textContent=NAMES[biome(P.position.x,P.position.z,h)]+(zoom>1.05?' · 🔭 ×'+zoom.toFixed(1):'');econ(dt);
 sky.position.copy(camera.position);renderer.render(scene,camera)})();
 </script></body></html>
